@@ -1,0 +1,25 @@
+
+
+service: dotnet-serverless-api
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: dotnetcore3.1
+  lambdaHashingVersion: 20201221
+
+package:
+  individually: true
+
+functions:
+  hello:
+    handler: dotnetServerlessDeploy::dotnetServerlessDeploy.LambdaEntryPoint::FunctionHandlerAsync
+
+    # you can add packaging information here
+    package:
+      artifact: bin/Release/netcoreapp3.1/lambda-artifact.zip
+      
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
