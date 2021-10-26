@@ -1,0 +1,13 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 3.1
+      
+  build:
+    commands:
+      - echo "hello world"
+      - echo $(date)
+      - dotnet build -c Release dotnetServerlessDeploy/dotnetServerlessDeploy.csproj
+      #- dotnet test -c Release ./CodeBuildDotnetTestReportExample.Tests/CodeBuildDotnetTestReportExample.Tests.csproj
