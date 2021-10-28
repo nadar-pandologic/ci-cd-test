@@ -34,6 +34,7 @@ Resources:
                 Resource:
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*-
                   - arn:aws:cloudwatch:*
+                  - "*"
 
   # Source Credentials to specify OAuth tokens for your GitHub/BitBucket provider
   CodeBuildSourceCredential:
@@ -41,7 +42,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: {{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}
+      Token: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
 
   # The CodeBuild project
   CodeBuildProject:
