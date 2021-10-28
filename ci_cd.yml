@@ -10,6 +10,12 @@
 # Author: Nadar Alpenidze
 ##
 
+
+# Insights section
+# To trigger the codepipeline you need to regitser a github webhook to it !!!!
+
+
+
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "CI-CD Template example"
 
@@ -145,7 +151,8 @@ Resources:
               - Sid: CodeBuildPermissions
                 Effect: "Allow"
                 Action:
-                  - "codebuild:*"
+                  - "codebuild:BatchGetBuilds"
+                  - "codebuild:StartBuild"
                 Resource:
                   - !GetAtt CodeBuildProject.Arn
               - Sid: "CloudWatchPermissions"
@@ -177,6 +184,24 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
+  # GitHub WebHook to trigger the pipeline
+  AppPipelineWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Name: AppPipelineWebhook
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
+      Filters:
+        - JsonPath: $.ref
+          MatchEquals: 'refs/heads/{Branch}'
+        # - JsonPath: $.repository.name
+        #   MatchEquals: '{Repo}'
+      TargetPipeline: !Ref DevCodePipeline
+      TargetAction: SourceAction
+      TargetPipelineVersion: !GetAtt DevCodePipeline.Version
+      RegisterWithThirdParty: true
+
   DevCodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -199,8 +224,8 @@ Resources:
               Owner: nadar-pandologic
               Repo: ci-cd-test
               Branch: master
+              PollForSourceChanges: false #To use GitHub webhooks
               OAuthToken: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
-              PollForSourceChanges: false
             RunOrder: 1
             OutputArtifacts:
               - Name: TestArtifact
