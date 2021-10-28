@@ -59,7 +59,8 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: "Allow"
+              - Sid: LogsPermissions
+                Effect: "Allow"
                 Action:
                   - "cloudwatch:*"
                   - "logs:CreateLogGroup"
@@ -68,6 +69,13 @@ Resources:
                 Resource:
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*-
                   - arn:aws:cloudwatch:*
+                  - "*"
+              - Sid: S3Permissinos
+                Effect: Allow
+                Action:
+                  - "s3:Get*"
+                  - "s3:PutObject"
+                Resource:
                   - "*"
 
   # Source Credentials to specify OAuth tokens for your GitHub/BitBucket provider
@@ -163,8 +171,8 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub ${AWS::StackName}-codepipeline-artifactstore-dev
-      VersioningConfiguration:
-        Status: Enabled
+      # VersioningConfiguration:
+      #   Status: Enabled
       Tags:
         - Key: Project
           Value: !Ref ProjectName
