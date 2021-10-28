@@ -6,6 +6,7 @@
 #2. Add all github events to codebuild
 #3. Include Parameters
 #4. Change CodeBuild deploy project IAM Role to separate one
+#5. Create Log Group that will be attached and deleted with the CI-CD Pipeline
 
 
 # Author: Nadar Alpenidze
@@ -127,10 +128,10 @@ Resources:
   CodeBuildDeployProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub ${AWS::StackName}-CodeBuildProject
+      Name: !Sub ${AWS::StackName}-CodeBuildDeployProject
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
-        Type: NO_ARTIFACTS
+        Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL

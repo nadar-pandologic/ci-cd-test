@@ -11,4 +11,3 @@ phases:
   build:
     commands:
       - exit 64
-      #- dotnet test -c Release ./CodeBuildDotnetTestReportExample.Tests/CodeBuildDotnetTestReportExample.Tests.csproj
