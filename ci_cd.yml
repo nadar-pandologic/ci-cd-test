@@ -41,7 +41,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: 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
+      Token: {{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}
 
   # The CodeBuild project
   CodeBuildProject:
