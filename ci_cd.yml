@@ -111,7 +111,7 @@ Resources:
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
 
-  # Code Pipeline To integrate while merging the PR. Steps -> Build -> Deploy for test
+  # Code Pipeline To integrate while merging the PR. Steps -> Build -> Deploy for test.
 
   DevCodePipelineRole:
     Type: AWS::IAM::Role
