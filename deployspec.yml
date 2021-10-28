@@ -10,7 +10,5 @@ phases:
       
   build:
     commands:
-      - echo "hello world"
-      - echo $(date)
-      - dotnet build -c Release dotnetServerlessDeploy/dotnetServerlessDeploy.csproj
+      - exit 64
       #- dotnet test -c Release ./CodeBuildDotnetTestReportExample.Tests/CodeBuildDotnetTestReportExample.Tests.csproj

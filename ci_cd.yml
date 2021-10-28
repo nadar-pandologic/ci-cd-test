@@ -5,6 +5,7 @@
 #1. Restrain CodeBuildRole to over permissive "*" resource
 #2. Add all github events to codebuild
 #3. Include Parameters
+#4. Change CodeBuild deploy project IAM Role to separate one
 
 
 # Author: Nadar Alpenidze
@@ -29,16 +30,6 @@ Parameters:
     Type: String
     Default: aws/codebuild/standard:5.0
 
-  # QaBranch:
-  #   Description: QA Branch Name
-  #   Type: String
-  #   AllowedPattern: ^[a-zA-Z]$
-
-  # ProdBranch:
-  #   Description: Production Branch Name
-  #   Type: String
-  #   AllowedPattern: ^[a-zA-Z]$
-  
   # RepositoryName:
   #   Description: GitHub repository name
   #   Type: String
@@ -107,6 +98,7 @@ Resources:
       Source:
         Type: GITHUB
         Location: https://github.com/nadar-pandologic/ci-cd-test.git
+        BuildSpec: buildspec.yml
         Auth:
           Type: OAUTH
           Resource: !Ref CodeBuildSourceCredential
@@ -130,7 +122,29 @@ Resources:
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
 
-  # Code Pipeline To integrate while merging the PR. Steps -> Build -> Deploy for test.
+
+ # The CodeBuild Deploy project
+  CodeBuildDeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-CodeBuildProject
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildImage
+        EnvironmentVariables:
+          - Name: ENV_NAME
+            Value: dev
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deployspec.yml
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
 
   DevCodePipelineRole:
     Type: AWS::IAM::Role
@@ -229,7 +243,6 @@ Resources:
             RunOrder: 1
             OutputArtifacts:
               - Name: TestArtifact
-
       - Name: Build
         Actions:
           -
@@ -241,12 +254,25 @@ Resources:
               Version: '1'
             Configuration:
               ProjectName: !Ref CodeBuildProject
-              # PrimarySource: TestArtifact
-              #EnvironmentVariables: '[{"name":"TEST_VARIABLE","value":"TEST_VALUE","type":"PLAINTEXT"},{"name":"ParamStoreTest","value":"PARAMETER_NAME","type":"PARAMETER_STORE"}]'
-            OutputArtifacts:
-              - Name: MyPipeline-BuildArtifact
             InputArtifacts:
               - Name: TestArtifact
+            OutputArtifacts:
+              - Name: MyPipeline-BuildArtifact
+      - Name: Deploy
+        Actions:
+          -
+            Name: DeployAction
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: '1'
+            Configuration:
+              ProjectName: !Ref CodeBuildDeployProject
+              # PrimarySource: TestArtifact
+              #EnvironmentVariables: '[{"name":"TEST_VARIABLE","value":"TEST_VALUE","type":"PLAINTEXT"},{"name":"ParamStoreTest","value":"PARAMETER_NAME","type":"PARAMETER_STORE"}]'
+            InputArtifacts:
+              - Name: MyPipeline-BuildArtifact
       Tags:
         - Key: Project
           Value: !Ref ProjectName
