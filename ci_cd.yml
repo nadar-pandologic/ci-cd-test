@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CI-CD Template example"
+
+Parameters:
+  CodeBuildImage:
+    Description: code build image
+    Type: String
+    Default: aws/codebuild/standard:5.0
+
+Resources:
+  # Role for CodeBuild
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ["sts:AssumeRole"]
+            Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "cloudwatch:*"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*-
+                  - arn:aws:cloudwatch:*
+                  - "*"
+
+  # Source Credentials to specify OAuth tokens for your GitHub/BitBucket provider
+  CodeBuildSourceCredential:
+    Type: AWS::CodeBuild::SourceCredential
+    Properties:
+      AuthType: PERSONAL_ACCESS_TOKEN
+      ServerType: GITHUB
+      Token: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
+
+  # The CodeBuild project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildImage
+      Source:
+        Type: GITHUB
+        Location: https://github.com/nadar-pandologic/ci-cd-test.git
+        Auth:
+          Type: OAUTH
+          Resource: !Ref CodeBuildSourceCredential
+      TimeoutInMinutes: 10
+      Triggers:
+        Webhook: true #Webhooks allow you to build or set up integrations
+        FilterGroups:
+        - - Type: EVENT
+            Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+          - Type: BASE_REF
+            Pattern: ^refs/heads/master$
+            ExcludeMatchedPattern: false
+        # - - Type: EVENT
+        #     Pattern: PUSH
+        #   - Type: HEAD_REF
+        #     Pattern: ^refs/heads/.*
+        #   - Type: FILE_PATH
+        #     Pattern: READ_ME
+        #     ExcludeMatchedPattern: true
+
