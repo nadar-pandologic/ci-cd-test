@@ -80,6 +80,7 @@ Resources:
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
+      Name: !Sub ${AWS::StackName}-CodeBuildProject
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: NO_ARTIFACTS
@@ -181,7 +182,7 @@ Resources:
             Configuration:
               Owner: nadar-pandologic
               Repo: ci-cd-test
-              Branch: Master
+              Branch: master
               OAuthToken: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
               PollForSourceChanges: false
             RunOrder: 1
