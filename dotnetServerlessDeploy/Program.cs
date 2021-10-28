@@ -14,6 +14,8 @@ namespace dotnetServerlessDeploy
         public static void Main(string[] args)
         {
             CreateHostBuilder(args).Build().Run();
+
+            bool masho = true;
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
