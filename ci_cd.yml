@@ -123,7 +123,6 @@ Resources:
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
 
-
  # The CodeBuild Deploy project
   CodeBuildDeployProject:
     Type: AWS::CodeBuild::Project
@@ -170,6 +169,7 @@ Resources:
                   - "codebuild:StartBuild"
                 Resource:
                   - !GetAtt CodeBuildProject.Arn
+                  - !GetAtt CodeBuildDeployProject.Arn
               - Sid: "CloudWatchPermissions"
                 Effect: "Allow"
                 Action:
