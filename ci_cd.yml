@@ -2,7 +2,7 @@
 
 ##
 ## Template TODO:
-#1. Restrain CodeBuildRole to over permissive "*" resource
+#1. Restrain CodeBuildRole to over permissive "*" resource -> Reference the cloudformation bucket
 #2. Add all github events to codebuild
 #3. Include Parameters
 #4. Change CodeBuild deploy project IAM Role to separate one
@@ -73,6 +73,8 @@ Resources:
                 Action:
                   - "s3:Get*"
                   - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
                 Resource:
                   - "*"
 
