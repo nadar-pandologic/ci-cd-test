@@ -103,6 +103,9 @@ Resources:
             - Type: BASE_REF
               Pattern: ^refs/heads/master$
               ExcludeMatchedPattern: false
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
         # - - Type: EVENT
         #     Pattern: PUSH
         #   - Type: HEAD_REF
@@ -149,6 +152,9 @@ Resources:
                   - "s3:PutObject"
                 Resource:
                   - "*"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
 
   # Artifact store bucket
   DevCodePipelineArtifactStore:
@@ -206,3 +212,6 @@ Resources:
               - Name: MyPipeline-BuildArtifact
             InputArtifacts:
               - Name: TestArtifact
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
