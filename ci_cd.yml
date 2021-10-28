@@ -10,6 +10,10 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "CI-CD Template example"
 
 Parameters:
+  ProjectName:
+    Description: Your project name. Will be used to name the resources created with that cloudformation
+    Type: String
+
   CodeBuildImage:
     Description: code build image
     Type: String
@@ -74,7 +78,7 @@ Resources:
         Webhook: true #Webhooks allow you to build or set up integrations
         FilterGroups:
         - - Type: EVENT
-            Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED, PULL_REQUEST_REOPENED
           - Type: BASE_REF
             Pattern: ^refs/heads/master$
             ExcludeMatchedPattern: false
@@ -86,3 +90,71 @@ Resources:
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
 
+
+
+  # Code Pipeline To integrate while merging the PR. Steps -> Build -> Deploy for test
+
+  DevCodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ["sts:AssumeRole"]
+            Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - 
+                Effect: "Allow"
+                Action:
+                  - "codebuild:*"
+                Resource:
+                  - !GetAtt CodeBuildProject.Arn
+              - 
+                Sid: "CloudWatch permissions"
+                Effect: "Allow"
+                Action:
+                  - "cloudwatch:*"
+                  - "logs:*"
+                Resource:
+                  - "*"
+
+
+  # Artifact store bucket
+  DevCodePipelineArtifactStore:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub ${ProjectName}-codepipeline-artifactstore-dev
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+          
+
+  DevCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${ProjectName}-codepipeline-dev
+      RoleArn: !GetAtt DevCodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref DevCodePipelineArtifactStore
+      Stages: 
+        - 
+          #TODO: rename
+          Name: Build
+          Actions:
+            -
+              ActionTypeId:
+                  Category: Source
+                  Owner: 
+                  Provider: 
+                  Version: 
