@@ -9,6 +9,8 @@
 #5. Create Log Group that will be attached and deleted with the CI-CD Pipeline
 
 
+#TODO: Check if you can give S3:Get* Policy??
+
 # Author: Nadar Alpenidze
 ##
 
