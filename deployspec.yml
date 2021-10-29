@@ -13,3 +13,4 @@ phases:
       # - exit 64
       - echo Hello World
       - echo Nadar
+      - echo alpenidze
