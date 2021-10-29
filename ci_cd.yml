@@ -2,11 +2,12 @@
 
 ##
 ## Template TODO:
-#1. Restrain CodeBuildRole to over permissive "*" resource -> Reference the cloudformation bucket
+#1. Restrain IAMRoleForBuildCodeBuild to over permissive "*" resource -> Reference the cloudformation bucket
 #2. Add all github events to codebuild
 #3. Include Parameters
 #4. Change CodeBuild deploy project IAM Role to separate one
 #5. Create Log Group that will be attached and deleted with the CI-CD Pipeline
+#6. Add tags to all resources
 
 
 #TODO: Check if you can give S3:Get* Policy??
@@ -18,6 +19,12 @@
 # Insights section
 # 1. To trigger the codepipeline you need to regitser a github webhook to it !!!!
 # 2. CodePipeline itself doesn't have logs. It uses CodeBuilds log groups
+# 3. Logical ID is the name of the resource in our template
+# 4. AWS adds 3 tags by default with CloudFormation: aws:cloudformation:stack-name, aws:cloudformation:logical-id and aws:cloudformation:stack-id
+
+# Conventions Built:
+# 1. Always start the Resource Logical ID with the Resource Type.
+# 2. S3 buckets and CloudFormation stack names are lower-kebab-case. All other resources are {StackName}-PascalCaseExplanation
 
 
 
@@ -34,29 +41,41 @@ Parameters:
     Type: String
     Default: aws/codebuild/standard:5.0
 
-  # RepositoryName:
-  #   Description: GitHub repository name
-  #   Type: String
+  GitHubRepo:
+    Description: GitHub repository name
+    Type: String
 
-  # GitHubOwner:
-  #   Description: GitHub Repo Owner
+  GitHubOwner:
+    Description: GitHub Repo Owner
+    Type: String
+
+  # IsManualApprovalStepActive:
+  #   Description: Specify whether you want manual approval before running the deploy step
   #   Type: String
+  #   AllowedValues:
+  #     - "true"
+  #     - "false"
+  #   Default: "true"
 
 Resources:
   # Role for CodeBuild
-  CodeBuildRole:
+  IAMRoleForBuildCodeBuild:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: Stack
+          Value: !Ref AWS::StackName
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
           - Action: ["sts:AssumeRole"]
             Effect: Allow
             Principal:
               Service: [codebuild.amazonaws.com]
-        Version: "2012-10-17"
-      Path: /
       Policies:
-        - PolicyName: CodeBuildAccess
+        - PolicyName: !Sub ${AWS::StackName}-BuildCodeBuildRole
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -68,22 +87,54 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource:
-                  - !GetAtt CloudWatchLogGroup.Arn
-              - Sid: S3BucketPermissions
+                  - !GetAtt LogGroupForBuild.Arn
+              - Sid: S3ReadPermissions
                 Effect: Allow
                 Action:
                   - "s3:List*"
-                Resource:
-                  - !GetAtt DevCodePipelineArtifactStore.Arn
-              - Sid: S3ObjectsPermissions
-                Effect: Allow
-                Action:
                   - "s3:Get*"
                 Resource:
-                  - !Sub ${DevCodePipelineArtifactStore.Arn}/*
-                  - !GetAtt DevCodePipelineArtifactStore.Arn
-                
+                  - !Sub ${S3BucketPipelineArtifacts.Arn}/*
+                  - !GetAtt S3BucketPipelineArtifacts.Arn
 
+  IAMRoleForDeployCodeBuild: #We use CodeBuild for Deploy step
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: Stack
+          Value: !Ref AWS::StackName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: ["sts:AssumeRole"]
+            Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-DeployCodeBuildRole
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: LogsPermissions
+                Effect: "Allow"
+                Action:
+                  - "cloudwatch:*"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !GetAtt LogGroupForDeploy.Arn
+              - Sid: S3ReadPermissions
+                Effect: Allow
+                Action:
+                  - "s3:List*"
+                  - "s3:Get*"
+                Resource:
+                  - !Sub ${S3BucketPipelineArtifacts.Arn}/*
+                  - !GetAtt S3BucketPipelineArtifacts.Arn
+                
   # Source Credentials to specify OAuth tokens for your GitHub/BitBucket provider
   CodeBuildSourceCredential:
     Type: AWS::CodeBuild::SourceCredential
@@ -92,19 +143,26 @@ Resources:
       ServerType: GITHUB
       Token: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
 
-  CloudWatchLogGroup:
+  LogGroupForBuild:
     Type: AWS::Logs::LogGroup
     Properties: 
       # KmsKeyId: String
-      LogGroupName: !Sub ${AWS::StackName}-${ProjectName}-CICD
-      RetentionInDays: 30
+      LogGroupName: !Sub ${AWS::StackName}-CICDBuildLogs
+      RetentionInDays: 14
+
+  LogGroupForDeploy:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      # KmsKeyId: String
+      LogGroupName: !Sub ${AWS::StackName}-CICDDeployLogs
+      RetentionInDays: 14
 
   # The CodeBuild project
-  CodeBuildProject:
+  CodeBuildBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub ${AWS::StackName}-CodeBuildProject
-      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Name: !Sub ${AWS::StackName}-CodeBuildBuildProject
+      ServiceRole: !GetAtt IAMRoleForBuildCodeBuild.Arn
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
@@ -113,7 +171,7 @@ Resources:
         Image: !Ref CodeBuildImage
       Source:
         Type: GITHUB
-        Location: https://github.com/nadar-pandologic/ci-cd-test.git
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
         BuildSpec: buildspec.yml
         Auth:
           Type: OAUTH
@@ -127,13 +185,6 @@ Resources:
             - Type: BASE_REF
               Pattern: ^refs/heads/master$
               ExcludeMatchedPattern: false
-      LogsConfig:
-        CloudWatchLogs:
-          GroupName: !Ref CloudWatchLogGroup
-          Status: ENABLED
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
         # - - Type: EVENT
         #     Pattern: PUSH
         #   - Type: HEAD_REF
@@ -141,37 +192,45 @@ Resources:
         #   - Type: FILE_PATH
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
-
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref LogGroupForBuild
+          Status: ENABLED
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Stack
+          Value: !Ref AWS::StackName
 
  # The CodeBuild Deploy project - We use CodeBuild to run CLI commands to deploy our serverless application
   CodeBuildDeployProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub ${AWS::StackName}-CodeBuildDeployProject
-      ServiceRole: !GetAtt CodeBuildRole.Arn
+      ServiceRole: !GetAtt IAMRoleForDeployCodeBuild.Arn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: !Ref CodeBuildImage
-        EnvironmentVariables:
-          - Name: ENV_NAME
-            Value: dev
+        # EnvironmentVariables:
+        #   - Name: ENV_NAME
+        #     Value: dev
       Source:
         Type: CODEPIPELINE
         BuildSpec: deployspec.yml
       TimeoutInMinutes: 10
       LogsConfig:
         CloudWatchLogs:
-          GroupName: !Ref CloudWatchLogGroup
+          GroupName: !Ref LogGroupForDeploy
           Status: ENABLED
       Tags:
         - Key: Project
           Value: !Ref ProjectName
           # StreamName: String
 
-  DevCodePipelineRole:
+  IAMRoleForCodePipeline:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -193,42 +252,50 @@ Resources:
                   - "codebuild:BatchGetBuilds"
                   - "codebuild:StartBuild"
                 Resource:
-                  - !GetAtt CodeBuildProject.Arn
+                  - !GetAtt CodeBuildBuildProject.Arn
                   - !GetAtt CodeBuildDeployProject.Arn
-              - Sid: "CloudWatchPermissions"
-                Effect: "Allow"
-                Action:
-                  - "cloudwatch:*"
-                  - "logs:*"
-                Resource:
-                  - "*"
-              - Sid: S3Permissinos
+              # - Sid: "CloudWatchPermissions"
+              #   Effect: "Allow"
+              #   Action:
+              #     - "cloudwatch:*"
+              #     - "logs:*"
+              #   Resource:
+              #     - "*"
+              - Sid: S3Permissions
                 Effect: Allow
                 Action:
+                  - "s3:List*"
                   - "s3:Get*"
                   - "s3:PutObject"
                 Resource:
-                  - "*"
+                  - !Sub ${S3BucketPipelineArtifacts.Arn}/*
+                  - !GetAtt S3BucketPipelineArtifacts.Arn
       Tags:
         - Key: Project
           Value: !Ref ProjectName
+        - Key: Stack
+          Value: !Ref AWS::StackName
 
   # Artifact store bucket
-  DevCodePipelineArtifactStore:
+  S3BucketPipelineArtifacts:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ${AWS::StackName}-codepipeline-artifactstore-dev
+      BucketName: !Sub ${AWS::StackName}-pipeline-artifacts #Bucket can't contain upper case letters
       # VersioningConfiguration:
       #   Status: Enabled
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
+      # Tags:
+      #   - Key: Project
+      #     Value: !Ref ProjectName
+      #   - Key: Stack
+      #     Value: !Ref AWS::StackName
+      #   - Key: Region
+      #     Value: !Ref AWS::Region
 
   # GitHub WebHook to trigger the pipeline
   AppPipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
     Properties:
-      Name: AppPipelineWebhook
+      Name: !Sub ${AWS::StackName}-GitHubWebHook
       Authentication: GITHUB_HMAC
       AuthenticationConfiguration:
         SecretToken: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
@@ -237,19 +304,19 @@ Resources:
           MatchEquals: 'refs/heads/{Branch}'
         # - JsonPath: $.repository.name
         #   MatchEquals: '{Repo}'
-      TargetPipeline: !Ref DevCodePipeline
+      TargetPipeline: !Ref CodePipeline
       TargetAction: SourceAction
-      TargetPipelineVersion: !GetAtt DevCodePipeline.Version
+      TargetPipelineVersion: !GetAtt CodePipeline.Version
       RegisterWithThirdParty: true
 
-  DevCodePipeline:
+  CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Sub ${AWS::StackName}-codepipeline-dev
-      RoleArn: !GetAtt DevCodePipelineRole.Arn
+      Name: !Sub ${AWS::StackName}-CodePipeline
+      RoleArn: !GetAtt IAMRoleForCodePipeline.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref DevCodePipelineArtifactStore
+        Location: !Ref S3BucketPipelineArtifacts
       Stages:
       - Name: Source
         Actions:
@@ -261,14 +328,14 @@ Resources:
               Provider: GitHub
               Version: '1'
             Configuration:
-              Owner: nadar-pandologic
-              Repo: ci-cd-test
-              Branch: master
+              Owner: !Ref GitHubOwner
+              Repo: !Ref GitHubRepo
+              Branch: master #TODO: From parameter
               PollForSourceChanges: false #To use GitHub webhooks
               OAuthToken: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
             RunOrder: 1
             OutputArtifacts:
-              - Name: TestArtifact
+              - Name: SourceStepArtifacts
       - Name: Build
         Actions:
           -
@@ -279,11 +346,11 @@ Resources:
               Provider: CodeBuild
               Version: '1'
             Configuration:
-              ProjectName: !Ref CodeBuildProject
+              ProjectName: !Ref CodeBuildBuildProject
             InputArtifacts:
-              - Name: TestArtifact
+              - Name: SourceStepArtifacts
             OutputArtifacts:
-              - Name: MyPipeline-BuildArtifact
+              - Name: BuildStepArtifacts
       - Name: Deploy
         Actions:
           -
@@ -295,11 +362,11 @@ Resources:
               Version: '1'
             Configuration:
               ProjectName: !Ref CodeBuildDeployProject
-              # PrimarySource: TestArtifact
+              # PrimarySource: SourceStepArtifacts
               #EnvironmentVariables: '[{"name":"TEST_VARIABLE","value":"TEST_VALUE","type":"PLAINTEXT"},{"name":"ParamStoreTest","value":"PARAMETER_NAME","type":"PARAMETER_STORE"}]'
             InputArtifacts:
-              # - Name: MyPipeline-BuildArtifact
-              - Name: TestArtifact
+              # - Name: BuildStepArtifacts
+              - Name: SourceStepArtifacts
       Tags:
         - Key: Project
           Value: !Ref ProjectName
