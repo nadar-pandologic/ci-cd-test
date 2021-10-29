@@ -12,3 +12,4 @@ phases:
     commands:
       # - exit 64
       - echo Hello World
+      - echo Nadar
