@@ -73,10 +73,11 @@ Resources:
               - Sid: S3Permissinos
                 Effect: Allow
                 Action:
-                  - "s3:Get*"
-                  - "s3:PutObject"
-                  - "s3:GetObject"
-                  - "s3:GetObjectVersion"
+                  # - "s3:Get*"
+                  # - "s3:PutObject"
+                  # - "s3:GetObject"
+                  # - "s3:GetObjectVersion"
+                  - "s3:*"
                 Resource:
                   - "*"
 
