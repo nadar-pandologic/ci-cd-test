@@ -294,7 +294,8 @@ Resources:
               # PrimarySource: TestArtifact
               #EnvironmentVariables: '[{"name":"TEST_VARIABLE","value":"TEST_VALUE","type":"PLAINTEXT"},{"name":"ParamStoreTest","value":"PARAMETER_NAME","type":"PARAMETER_STORE"}]'
             InputArtifacts:
-              - Name: MyPipeline-BuildArtifact
+              # - Name: MyPipeline-BuildArtifact
+              - Name: TestArtifact
       Tags:
         - Key: Project
           Value: !Ref ProjectName
