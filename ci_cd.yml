@@ -16,7 +16,8 @@
 
 
 # Insights section
-# To trigger the codepipeline you need to regitser a github webhook to it !!!!
+# 1. To trigger the codepipeline you need to regitser a github webhook to it !!!!
+# 2. CodePipeline itself doesn't have logs. It uses CodeBuilds log groups
 
 
 
@@ -67,19 +68,21 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*-
-                  - arn:aws:cloudwatch:*
-                  - "*"
-              - Sid: S3Permissinos
+                  - !GetAtt CloudWatchLogGroup.Arn
+              - Sid: S3BucketPermissions
                 Effect: Allow
                 Action:
-                  # - "s3:Get*"
-                  # - "s3:PutObject"
-                  # - "s3:GetObject"
-                  # - "s3:GetObjectVersion"
-                  - "s3:*"
+                  - "s3:List*"
                 Resource:
-                  - "*"
+                  - !GetAtt DevCodePipelineArtifactStore.Arn
+              - Sid: S3ObjectsPermissions
+                Effect: Allow
+                Action:
+                  - "s3:Get*"
+                Resource:
+                  - !Sub ${DevCodePipelineArtifactStore.Arn}/*
+                  - !GetAtt DevCodePipelineArtifactStore.Arn
+                
 
   # Source Credentials to specify OAuth tokens for your GitHub/BitBucket provider
   CodeBuildSourceCredential:
@@ -139,7 +142,8 @@ Resources:
         #     Pattern: READ_ME
         #     ExcludeMatchedPattern: true
 
- # The CodeBuild Deploy project
+
+ # The CodeBuild Deploy project - We use CodeBuild to run CLI commands to deploy our serverless application
   CodeBuildDeployProject:
     Type: AWS::CodeBuild::Project
     Properties:
