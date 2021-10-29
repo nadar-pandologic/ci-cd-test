@@ -10,4 +10,5 @@ phases:
       
   build:
     commands:
-      - exit 64
+      # - exit 64
+      - echo Hello World
