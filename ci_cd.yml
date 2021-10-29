@@ -89,6 +89,13 @@ Resources:
       ServerType: GITHUB
       Token: "{{resolve:secretsmanager:github_secrets:SecretString:AWS_CI_CD_GITHUB}}"
 
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      # KmsKeyId: String
+      LogGroupName: !Sub ${AWS::StackName}-${ProjectName}-CICD
+      RetentionInDays: 30
+
   # The CodeBuild project
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -117,6 +124,10 @@ Resources:
             - Type: BASE_REF
               Pattern: ^refs/heads/master$
               ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref CloudWatchLogGroup
+          Status: ENABLED
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -147,9 +158,14 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: deployspec.yml
       TimeoutInMinutes: 10
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref CloudWatchLogGroup
+          Status: ENABLED
       Tags:
         - Key: Project
           Value: !Ref ProjectName
+          # StreamName: String
 
   DevCodePipelineRole:
     Type: AWS::IAM::Role
