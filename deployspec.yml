@@ -8,8 +8,8 @@ phases:
     runtime-versions:
       dotnet: 3.1
     commands:
-      - sudo apt-get update
-      - sudo apt install nodejs -y
+      - apt-get update
+      - apt install nodejs -y
       - npm install -g serverless
       
   build:
