@@ -17,4 +17,4 @@ phases:
       - cd ./dotnetServerlessDeploy
       - chmod +xwr build-serverless.sh
       - sh build-serverless.sh
-      - sls deploy --stage $ENVNAME # $ENVNAME coming from CICD Pipeline CodeBuild configuration
+      - sls deploy --stage $ENV_NAME # $ENV_NAME coming from CICD Pipeline CodeBuild configuration
