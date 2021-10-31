@@ -15,7 +15,9 @@ phases:
   build:
     commands:
       - cd ./dotnetServerlessDeploy
+      - ls
       - echo "Building serverless"
-      - ./build-serverless.sh
+      - chmod +xwr build-serverless.sh
+      - sh build-serverless.sh
       - echo "Deploying severless with sls deploy"
       - sls deploy --stage dev
