@@ -1,6 +1,6 @@
 
 
-service: dotnet-serverless-api-new
+service: dotnet-serverless-api-newz
 
 frameworkVersion: '2'
 
