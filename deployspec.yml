@@ -1,4 +1,4 @@
-# Don't mistake that with appspec.yml zzz
+# Don't mistake that with appspec.yml zzzz
 # This file will be used to give CodeBuild the necessary commands to deploy our application
 
 version: 0.2
