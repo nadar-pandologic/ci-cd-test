@@ -7,11 +7,15 @@ phases:
   install:
     runtime-versions:
       dotnet: 3.1
+    commands:
+      - sudo apt-get update
+      - sudo apt install nodejs -y
+      - npm install -g serverless
       
   build:
     commands:
-      # - exit 64
-      - echo Hello World
-      - echo Nadar
-      - echo alpenidze
-      - echo pazaza
+      - cd ./dotnetServerlessDeploy
+      - echo "Building serverless"
+      - ./build-serverless.sh
+      - echo "Deploying severless with sls deploy"
+      - sls deploy --stage dev
