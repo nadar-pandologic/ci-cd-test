@@ -1,4 +1,4 @@
-# Don't mistake that with appspec.yml 
+# Don't mistake that with appspec.yml zzzzzz
 # This file will be used to give CodeBuild the necessary commands to deploy our application
 
 version: 0.2
@@ -7,8 +7,16 @@ phases:
   install:
     runtime-versions:
       dotnet: 3.1
+    commands:
+      - apt-get update
+      - apt install nodejs -y
+      - npm install -g serverless
       
   build:
     commands:
-      # - exit 64
-      - echo Hello World
+
+      - export
+      - cd ./dotnetServerlessDeploy
+      - chmod +xwr build-serverless.sh
+      - sh build-serverless.sh
+      - sls deploy --stage $ENV_NAME # $ENV_NAME coming from CICD Pipeline CodeBuild configuration

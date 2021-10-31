@@ -1,6 +1,6 @@
 
 
-service: dotnet-serverless-api
+service: dotnet-serverless-api-newz
 
 frameworkVersion: '2'
 
@@ -22,4 +22,4 @@ functions:
       
     events:
       - http: ANY /
-      - http: 'ANY {proxy+}'
+      - http: 'ANY /{proxy+}'
